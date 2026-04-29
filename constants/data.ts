@@ -8,7 +8,7 @@ export const tabs = [
 ];
 
 export const HOME_USER = {
-	name: 'Mac Jones Soriano',
+	name: 'Mac Jones Gagua Soriano',
 };
 
 export const HOME_BALANCE = {
