@@ -1,7 +1,7 @@
 import { useSignIn } from '@clerk/expo';
-import { Link, useRouter, type Href } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { styled } from 'nativewind';
-// import { usePostHog } from 'posthog-react-native';
+import { usePostHog } from 'posthog-react-native';
 import { useState } from 'react';
 import {
 	KeyboardAvoidingView,
@@ -19,7 +19,7 @@ const SafeAreaView = styled(RNSafeAreaView);
 const SignIn = () => {
 	const { signIn, errors, fetchStatus } = useSignIn();
 	const router = useRouter();
-	// const posthog = usePostHog();
+	const posthog = usePostHog();
 
 	const [emailAddress, setEmailAddress] = useState('');
 	const [password, setPassword] = useState('');
@@ -37,6 +37,16 @@ const SignIn = () => {
 	const formValid =
 		emailAddress.length > 0 && password.length > 0 && emailValid;
 
+	const handleSuccessfulSignIn = () => {
+		posthog.identify(emailAddress, {
+			$set: { email: emailAddress },
+			$set_once: { first_sign_in_date: new Date().toISOString() },
+		});
+		posthog.capture('user_signed_in', { email: emailAddress });
+
+		// Most reliable navigation for (tabs) group
+	};
+
 	const handleSubmit = async () => {
 		if (!formValid) return;
 
@@ -47,9 +57,9 @@ const SignIn = () => {
 
 		if (error) {
 			console.error(JSON.stringify(error, null, 2));
-			// posthog.capture('user_sign_in_failed', {
-			// 	error_message: error.message,
-			// });
+			posthog.capture('user_sign_in_failed', {
+				error_message: error.message,
+			});
 			return;
 		}
 
@@ -61,24 +71,7 @@ const SignIn = () => {
 						return;
 					}
 
-					// posthog.identify(emailAddress, {
-					// 	$set: { email: emailAddress },
-					// 	$set_once: { first_sign_in_date: new Date().toISOString() },
-					// });
-					// posthog.capture('user_signed_in', { email: emailAddress });
-
-					const url = decorateUrl('/(tabs)');
-					if (url.startsWith('http')) {
-						// Only use window.location on web platform
-						if (typeof window !== 'undefined' && window.location) {
-							window.location.href = url;
-						} else {
-							// On native, just use router navigation
-							router.replace('/(tabs)' as Href);
-						}
-					} else {
-						router.replace(url as Href);
-					}
+					handleSuccessfulSignIn();
 				},
 			});
 		} else if (signIn.status === 'needs_second_factor') {
@@ -109,25 +102,7 @@ const SignIn = () => {
 						return;
 					}
 
-					// Track successful sign-in after verification
-					// posthog.identify(emailAddress, {
-					// 	$set: { email: emailAddress },
-					// 	$set_once: { first_sign_in_date: new Date().toISOString() },
-					// });
-					// posthog.capture('user_signed_in', { email: emailAddress });
-
-					const url = decorateUrl('/(tabs)');
-					if (url.startsWith('http')) {
-						// Only use window.location on web platform
-						if (typeof window !== 'undefined' && window.location) {
-							window.location.href = url;
-						} else {
-							// On native, just use router navigation
-							router.replace('/(tabs)' as Href);
-						}
-					} else {
-						router.replace(url as Href);
-					}
+					handleSuccessfulSignIn();
 				},
 			});
 		} else {
